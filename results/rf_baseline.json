@@ -1,0 +1,87 @@
+{
+  "model": "RandomForest (sklearn defaults: 100 trees, gini, no max_depth)",
+  "seed": 42,
+  "train_time_s": 0.462,
+  "train": {
+    "macro_f1": 1.0,
+    "accuracy": 1.0,
+    "classes_in_macro_f1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "per_class_f1": {
+      "0": 1.0,
+      "1": 1.0,
+      "2": 1.0,
+      "3": 1.0
+    }
+  },
+  "val": {
+    "macro_f1": 0.4287678108595753,
+    "accuracy": 0.8684596577017115,
+    "classes_in_macro_f1": [
+      0,
+      2,
+      3
+    ],
+    "per_class_f1": {
+      "0": 0.9501,
+      "1": 0.0,
+      "2": 0.2735,
+      "3": 0.0627
+    }
+  },
+  "test": {
+    "macro_f1": 0.906204617586208,
+    "accuracy": 0.9449442245412019,
+    "classes_in_macro_f1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "per_class_f1": {
+      "0": 0.9713,
+      "1": 0.972,
+      "2": 0.7801,
+      "3": 0.9014
+    }
+  },
+  "test_inference_ms_per_sample": 0.0107,
+  "random_split_reference": {
+    "macro_f1": 0.9902839629611485,
+    "accuracy": 0.9970384995064165,
+    "classes_in_macro_f1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "per_class_f1": {
+      "0": 0.9997,
+      "1": 1.0,
+      "2": 0.9835,
+      "3": 0.9779
+    }
+  },
+  "feature_importance": {
+    "S2_Light": 0.2081,
+    "S1_Light": 0.2046,
+    "S5_CO2_Slope": 0.1153,
+    "S3_Light": 0.0944,
+    "S5_CO2": 0.0773,
+    "S1_Sound": 0.0675,
+    "S3_Sound": 0.05,
+    "S2_Temp": 0.0422,
+    "S2_Sound": 0.0388,
+    "S3_Temp": 0.0354,
+    "S1_Temp": 0.0261,
+    "S4_Light": 0.0219,
+    "S4_Temp": 0.0105,
+    "S4_Sound": 0.0046,
+    "S7_PIR": 0.0022,
+    "S6_PIR": 0.0012
+  }
+}
