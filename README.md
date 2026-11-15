@@ -47,7 +47,7 @@ The validation set has no class-1 samples, so validation macro-F1 is averaged ov
 | Evaluation | Macro-F1 | Accuracy |
 |---|---|---|
 | Random 80/20 split (leaky, reference only) | 0.990 | 0.997 |
-| Day split – validation (01-10/11) | 0.429 | 0.869 |
+| Day split – validation (01-10/11, classes 0/2/3) | 0.429 | 0.868 |
 | Day split – test (12-23) | **0.906** | 0.945 |
 
 Per-class test F1: 0 → 0.971, 1 → 0.972, 2 → 0.780, 3 → 0.901. Most errors: true class 2 predicted as 0 (111 samples).
