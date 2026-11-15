@@ -13,6 +13,7 @@ src/eda.py                      dataset analysis -> results/eda_summary.txt, fig
 src/train_rf.py                 Random Forest baseline -> results/rf_*.json/txt, figures/rf_*.png
 figures/                        generated plots
 results/                        generated metrics
+report/                         progress report: PDF, LaTeX source (main.tex, Overleaf-ready), build_report.py
 ```
 
 ## How to run
