@@ -507,6 +507,233 @@ def build_pdf():
     return out
 
 
+# ---------------------------------------------------------------- Word output
+def build_docx():
+    from docx import Document
+    from docx.enum.section import WD_SECTION
+    from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from docx.shared import Cm, Pt
+
+    out = HERE / "CS464_Progress_Report_Group20.docx"
+    d = Document()
+    sec0 = d.sections[0]
+    sec0.page_height, sec0.page_width = Cm(29.7), Cm(21.0)
+    for side in ("left_margin", "right_margin"):
+        setattr(sec0, side, Cm(2.6))
+    sec0.top_margin = sec0.bottom_margin = Cm(2.5)
+    sec0.different_first_page_header_footer = True
+
+    normal = d.styles["Normal"]
+    normal.font.name, normal.font.size = "Times New Roman", Pt(12)
+    normal.element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
+    normal.paragraph_format.space_after = Pt(4)
+    normal.paragraph_format.line_spacing = 1.15
+    for name, size in (("Heading 1", 17), ("Heading 2", 14)):
+        st = d.styles[name]
+        st.font.name, st.font.size, st.font.bold = "Times New Roman", Pt(size), True
+        st.font.color.rgb = None
+        st.element.rPr.rFonts.set(qn("w:asciiTheme"), "") if False else None
+        rf = st.element.rPr.rFonts
+        for a in ("w:asciiTheme", "w:hAnsiTheme", "w:eastAsiaTheme", "w:cstheme"):
+            if rf.get(qn(a)) is not None:
+                del rf.attrib[qn(a)]
+        rf.set(qn("w:ascii"), "Times New Roman")
+        rf.set(qn("w:hAnsi"), "Times New Roman")
+        st.paragraph_format.space_before = Pt(16 if size == 17 else 12)
+        st.paragraph_format.space_after = Pt(8 if size == 17 else 6)
+        st.paragraph_format.keep_with_next = True
+
+    def add_runs(par, text, size=None, bold=False):
+        for m in re.finditer(r"`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*|([^`*]+|\*)", text):
+            code, b, i, plain = m.groups()
+            t = code or b or i or plain
+            parts = re.split(r"(CO2|p_k²|p_k)", t)
+            for part in parts:
+                if not part:
+                    continue
+                if part == "CO2":
+                    r = par.add_run("CO"); r2 = par.add_run("2"); r2.font.subscript = True
+                    runs = [r, r2]
+                elif part in ("p_k²", "p_k"):
+                    r = par.add_run("p"); r2 = par.add_run("k"); r2.font.subscript = True
+                    runs = [r, r2]
+                    if part == "p_k²":
+                        r3 = par.add_run("2"); r3.font.superscript = True; runs.append(r3)
+                else:
+                    runs = [par.add_run(part)]
+                for r in runs:
+                    r.bold = bool(b) or bold
+                    r.italic = bool(i)
+                    if code:
+                        r.font.name = "Consolas"; r.font.size = Pt(11)
+                    elif size:
+                        r.font.size = Pt(size)
+
+    def caption(text):
+        c = d.add_paragraph()
+        c.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        c.paragraph_format.space_after = Pt(12)
+        add_runs(c, text)
+
+    def border(cell, edge, sz):
+        tcPr = cell._tc.get_or_add_tcPr()
+        b = tcPr.find(qn("w:tcBorders"))
+        if b is None:
+            b = OxmlElement("w:tcBorders"); tcPr.append(b)
+        e = OxmlElement(f"w:{edge}")
+        e.set(qn("w:val"), "single"); e.set(qn("w:sz"), str(sz)); e.set(qn("w:color"), "000000")
+        b.append(e)
+
+    def field(par, instr):
+        r = par.add_run()
+        f1 = OxmlElement("w:fldChar"); f1.set(qn("w:fldCharType"), "begin")
+        it = OxmlElement("w:instrText"); it.set(qn("xml:space"), "preserve"); it.text = instr
+        f2 = OxmlElement("w:fldChar"); f2.set(qn("w:fldCharType"), "separate")
+        t = OxmlElement("w:t"); t.text = "Right-click and choose Update Field to show the contents."
+        f3 = OxmlElement("w:fldChar"); f3.set(qn("w:fldCharType"), "end")
+        for el in (f1, it, f2, t, f3):
+            r._r.append(el)
+
+    # title page
+    for _ in range(4):
+        d.add_paragraph()
+    for t in TITLE:
+        p_ = d.add_paragraph(); p_.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_.paragraph_format.space_after = Pt(2)
+        add_runs(p_, t, size=20)
+    d.add_paragraph()
+    for n, i in AUTHORS:
+        p_ = d.add_paragraph(f"{n} {i}"); p_.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_.paragraph_format.space_after = Pt(0)
+    p_ = d.add_paragraph(); p_.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_.paragraph_format.space_before = Pt(10)
+    p_.add_run(DATE)
+    p_ = d.add_paragraph(); p_.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_.paragraph_format.space_before = Pt(24)
+    p_.add_run().add_picture(str(FIG / "bilkent_logo.png"), width=Cm(10.5))
+
+    # contents (new section so page numbering starts at 1)
+    sec = d.add_section(WD_SECTION.NEW_PAGE)
+    sec.different_first_page_header_footer = False
+    pg = OxmlElement("w:pgNumType"); pg.set(qn("w:start"), "1")
+    cols = sec._sectPr.find(qn("w:cols"))
+    if cols is not None:
+        cols.addprevious(pg)
+    else:
+        sec._sectPr.append(pg)
+    fp = sec.footer.paragraphs[0]; fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    sec.footer.is_linked_to_previous = False
+    fp = sec.footer.paragraphs[0]; fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r = fp.add_run()
+    for kind, txt in (("begin", None), ("instr", "PAGE"), ("end", None)):
+        if kind == "instr":
+            el = OxmlElement("w:instrText"); el.set(qn("xml:space"), "preserve"); el.text = txt
+        else:
+            el = OxmlElement("w:fldChar"); el.set(qn("w:fldCharType"), kind)
+        r._r.append(el)
+    ct = d.add_paragraph(); add_runs(ct, "**Contents**", size=20)
+    field(d.add_paragraph(), r'TOC \o "1-2" \h \z \u')
+    d.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
+
+    sec_n = sub = tab = fg = 0
+    after_heading = True
+    for item in C:
+        kind = item[0]
+        if kind == "h1":
+            sec_n, sub = sec_n + 1, 0
+            h = d.add_heading(level=1); add_runs(h, f"{sec_n}   {item[1]}")
+            after_heading = True
+        elif kind == "h2":
+            sub += 1
+            h = d.add_heading(level=2); add_runs(h, f"{sec_n}.{sub}   {item[1]}")
+            after_heading = True
+        elif kind == "p":
+            par = d.add_paragraph(); par.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            if not after_heading:
+                par.paragraph_format.first_line_indent = Cm(0.6)
+            if item[1].rstrip().endswith(":"):
+                par.paragraph_format.keep_with_next = True
+            add_runs(par, item[1])
+            after_heading = False
+        elif kind in ("ul", "ol"):
+            for x in item[1]:
+                par = d.add_paragraph(style="List Bullet" if kind == "ul" else "List Number")
+                par.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+                add_runs(par, x)
+            after_heading = False
+        elif kind == "table":
+            _, cap, head, rows, kw = item
+            tab += 1
+            align = kw.get("align", "l" * len(head))
+            bold = set(kw.get("bold_rows", []))
+            t = d.add_table(rows=1 + len(rows), cols=len(head))
+            t.alignment = WD_TABLE_ALIGNMENT.CENTER
+            widths = kw.get("widths")
+            allrows = [head] + rows
+            for r_i, row in enumerate(allrows):
+                for c_i, val in enumerate(row):
+                    cell = t.cell(r_i, c_i)
+                    if widths:
+                        cell.width = Cm(widths[c_i])
+                    par = cell.paragraphs[0]
+                    par.paragraph_format.space_after = Pt(1)
+                    par.alignment = {"r": WD_ALIGN_PARAGRAPH.RIGHT, "c": WD_ALIGN_PARAGRAPH.CENTER}.get(
+                        align[c_i], WD_ALIGN_PARAGRAPH.LEFT)
+                    add_runs(par, val, size=11, bold=(r_i == 0 or (r_i - 1) in bold))
+                    if r_i == 0:
+                        border(cell, "top", 12); border(cell, "bottom", 6)
+                    if r_i == len(allrows) - 1:
+                        border(cell, "bottom", 12)
+                    if kw.get("midrule_before") is not None and r_i - 1 == kw["midrule_before"]:
+                        border(cell, "top", 6)
+                    if r_i < len(allrows) - 1:
+                        par.paragraph_format.keep_with_next = True
+            caption(f"Table {tab}: {cap}")
+            after_heading = False
+        elif kind == "fig":
+            _, f, cap, w = item
+            fg += 1
+            par = d.add_paragraph(); par.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            par.paragraph_format.keep_with_next = True
+            iw, ih = ImageReader(str(FIG / f)).getSize()
+            width_cm = 15.8 * w
+            if width_cm * ih / iw > 15.5:
+                width_cm = 15.5 * iw / ih
+            par.add_run().add_picture(str(FIG / f), width=Cm(width_cm))
+            caption(f"Figure {fg}: {cap}")
+            after_heading = False
+
+    d.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
+    h = d.add_heading(level=1); add_runs(h, "References")
+    for i, ref in enumerate(REFS):
+        par = d.add_paragraph()
+        par.paragraph_format.left_indent = Cm(0.9)
+        par.paragraph_format.first_line_indent = Cm(-0.9)
+        add_runs(par, f"[{i + 1}]  {ref}")
+
+    # ask Word to refresh the contents field when the file is opened
+    st_el = d.settings.element
+    zoom = st_el.find(qn("w:zoom"))
+    if zoom is not None and zoom.get(qn("w:percent")) is None:
+        zoom.set(qn("w:percent"), "100")
+    upd = OxmlElement("w:updateFields"); upd.set(qn("w:val"), "true")
+    after = ["hdrShapeDefaults", "footnotePr", "endnotePr", "compat", "docVars", "rsids", "mathPr",
+             "attachedSchema", "themeFontLang", "clrSchemeMapping", "doNotIncludeSubdocsInStats",
+             "doNotAutoCompressPictures", "forceUpgrade", "captions", "readModeInkLockDown", "smartTagType",
+             "schemaLibrary", "shapeDefaults", "doNotEmbedSmartTags", "decimalSymbol", "listSeparator"]
+    anchor = next((c for c in st_el if c.tag.split("}")[1] in after), None)
+    if anchor is not None:
+        anchor.addprevious(upd)
+    else:
+        st_el.append(upd)
+    d.save(str(out))
+    return out
+
+
 if __name__ == "__main__":
     build_tex()
     print("wrote", build_pdf())
+    print("wrote", build_docx())
